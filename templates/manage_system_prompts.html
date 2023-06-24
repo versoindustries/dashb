@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Manage System Prompts</h1>
+  <form method="POST" action="">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.prompt.label }} {{ form.prompt(class="form-control") }}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+  <table class="table mt-4">
+    <thead>
+      <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Prompt</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for prompt in prompts %}
+        <tr>
+          <td>{{ prompt.id }}</td>
+          <td>{{ prompt.prompt }}</td>
+          <td>
+            <a href="{{ url_for('edit_system_prompt', prompt_id=prompt.id) }}" class="btn btn-sm btn-primary">Edit</a>
+            <form method="POST" action="{{ url_for('delete_system_prompt', prompt_id=prompt.id) }}" class="d-inline">
+              {{ form.hidden_tag() }}
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

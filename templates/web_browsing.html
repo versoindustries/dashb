@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Web Browsing</h1>
+  <form method="POST" action="">
+    <div class="form-group">
+      <label for="search_query">Search Query</label>
+      <input type="text" class="form-control" id="search_query" name="search_query">
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+  {% if search_results %}
+    <div class="mt-4">
+      <h2>Search Results:</h2>
+      <ul>
+        {% for result in search_results %}
+          <li>{{ result.text }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+  {% if first_result_content %}
+    <div class="mt-4">
+      <h2>Content of the First Result:</h2>
+      <pre>{{ first_result_content }}</pre>
+    </div>
+  {% endif %}
+{% endblock %}

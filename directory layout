@@ -1,0 +1,15 @@
+flask_app/
+│
+├── app.py
+├── forms.py
+├── models.py
+│
+├── templates/
+│   ├── base.html
+│   ├── home.html
+│   ├── login.html
+│   └── register.html
+│
+└── static/
+    └── css/
+        └── main.css

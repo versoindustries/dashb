@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>OpenAI API Interaction</h1>
+  <form method="POST" action="">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.prompt.label }} {{ form.prompt(class="form-control") }}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+  {% if response_text %}
+    <div class="mt-4">
+      <h2>Generated Text:</h2>
+      <p>{{ response_text }}</p>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>{% block title %}Flask App{% endblock %}</title>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <a class="navbar-brand" href="{{ url_for('home') }}">Flask App</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('openai') }}">OpenAI</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('web_browsing') }}">Web Browsing</a>
+        </li>
+        </ul>
+      </div>
+    </nav>
+    <div class="container">
+      {% for message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ message[1] }}">{{ message[0] }}</div>
+      {% endfor %}
+      {% block content %}{% endblock %}
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.min.js"></script>
+    
+{% if current_user.is_authenticated and current_user.is_admin %}
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('manage_api_keys') }}">Manage API Keys</a>
+  </li>
+{% endif %}
+
+{% if current_user.is_authenticated and current_user.is_admin %}
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('manage_system_prompts') }}">Manage System Prompts</a>
+  </li>
+{% endif %}
+
+  </body>
+</html>

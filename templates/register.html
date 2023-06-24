@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Register</h1>
+  <form method="POST" action="">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      {{ form.username.label }} {{ form.username(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.email.label }} {{ form.email(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.api_key.label }} {{ form.api_key(class="form-control") }}
+      <small class="form-text text-muted">
+        <a href="https://beta.openai.com/signup/" target="_blank">Get API Key</a>
+      </small>
+    </div>
+    <div class="form-group">
+      {{ form.password.label }} {{ form.password(class="form-control") }}
+    </div>
+    <div class="form-group">
+      {{ form.confirm_password.label }} {{ form.confirm_password(class="form-control") }}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+{% endblock %}
