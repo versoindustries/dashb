@@ -1,11 +1,12 @@
 import os
 import openai
 from flask import Flask, render_template, url_for, flash, redirect, request, abort
-from flask_sqlalchemy import SQLAlchemy
+from models import db
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from forms import OpenAIForm
 
 from forms import RegistrationForm, LoginForm, SystemPromptForm
 from models import User, Conversation, SystemPrompt
@@ -15,7 +16,7 @@ from models import User, Conversation, SystemPrompt
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
-db = SQLAlchemy(app)
+db.init_app(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -71,32 +72,43 @@ def manage_api_keys():
     users = User.query.all()
     return render_template('manage_api_keys.html', title='Manage API Keys', users=users)
 
-from forms import OpenAIForm
 
-@app.route("/openai", methods=['GET', 'POST'])
+@app.route("/branchedchat", methods=['GET', 'POST'])
 @login_required
-def openai():
+def branchedchat():
     form = OpenAIForm()
     response_text = None
+
     if form.validate_on_submit():
         prompt = form.prompt.data
+        response_text = get_openai_response(prompt, current_user.api_key)
+        save_conversation(current_user.id, prompt, response_text)
 
-        # Set the OpenAI API key
-        openai.api_key = current_user.api_key
+    return render_template('branchedchat.html', title='OpenAI', form=form, response_text=response_text)
 
-        response = openai.Completion.create(
-            engine="gpt-4",
-            prompt=prompt,
-            max_tokens=30000,
-            n=1,
-            stop=None,
-            temperature=0.77,
-        )
-        response_text = response.choices[0].text.strip()
-        conversation = Conversation(user_id=current_user.id, prompt=prompt, response=response_text)
-        db.session.add(conversation)
-        db.session.commit()
-    return render_template('openai.html', title='OpenAI', form=form, response_text=response_text)
+def get_openai_response(prompt, api_key):
+    openai.api_key = api_key
+    openai.api_key = api_key
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful assistant."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+    return response.choices[0].message['content'].strip()
+
+def save_conversation(user_id, prompt, response_text):
+    conversation = Conversation(user_id=user_id, prompt=prompt, response=response_text)
+    db.session.add(conversation)
+    db.session.commit()
+
 
 @app.route("/manage_system_prompts", methods=['GET', 'POST'])
 @login_required
