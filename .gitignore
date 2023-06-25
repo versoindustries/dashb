@@ -1,3 +1,4 @@
 /env/
 /chrome-win64/
 **/__pycache__/
+*.db

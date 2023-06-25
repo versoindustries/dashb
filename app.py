@@ -1,6 +1,6 @@
 import os
 import openai
-from flask import Flask, render_template, url_for, flash, redirect, request, abort
+from flask import Flask, render_template, url_for, flash, redirect, request, abort, jsonify
 from models import db
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
@@ -72,6 +72,38 @@ def manage_api_keys():
     users = User.query.all()
     return render_template('manage_api_keys.html', title='Manage API Keys', users=users)
 
+def get_openai_response(prompt, api_key):
+    import openai
+
+    # Fetch the system prompt from the database
+    system_prompt = SystemPrompt.query.first()
+
+    openai.api_key = api_key
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {
+                "role": "system",
+                "content": system_prompt.prompt if system_prompt else "You are a helpful assistant."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+    return response.choices[0].message['content'].strip()
+
+def save_conversation(user_id, prompt, response_text):
+    # Save the user's message
+    user_message = Conversation(user_id=user_id, prompt=prompt, response=None)
+    db.session.add(user_message)
+
+    # Save the assistant's response
+    assistant_message = Conversation(user_id=user_id, prompt=None, response=response_text)
+    db.session.add(assistant_message)
+
+    db.session.commit()
 
 @app.route("/branchedchat", methods=['GET', 'POST'])
 @login_required
@@ -83,31 +115,11 @@ def branchedchat():
         prompt = form.prompt.data
         response_text = get_openai_response(prompt, current_user.api_key)
         save_conversation(current_user.id, prompt, response_text)
+        return jsonify(response=response_text)
 
-    return render_template('branchedchat.html', title='OpenAI', form=form, response_text=response_text)
+    return render_template('branchedchat.html', title='OpenAI', form=form)
 
-def get_openai_response(prompt, api_key):
-    openai.api_key = api_key
-    openai.api_key = api_key
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
-    return response.choices[0].message['content'].strip()
 
-def save_conversation(user_id, prompt, response_text):
-    conversation = Conversation(user_id=user_id, prompt=prompt, response=response_text)
-    db.session.add(conversation)
-    db.session.commit()
 
 
 @app.route("/manage_system_prompts", methods=['GET', 'POST'])

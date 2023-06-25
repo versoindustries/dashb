@@ -2,17 +2,66 @@
 
 {% block content %}
   <h1>AssistantChat</h1>
-  <form method="POST" action="">
-    {{ form.hidden_tag() }}
-    <div class="form-group">
-      {{ form.prompt.label }} {{ form.prompt(class="form-control") }}
+  <div class="container">
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-body" id="conversation" style="height: 400px; overflow-y: scroll;">
+            <h2>Conversation:</h2>
+            {% if conversation %}
+              {% for message in conversation %}
+                <p>
+                  {% if message.prompt %}
+                    <strong>User:</strong> {{ message.prompt }}
+                  {% else %}
+                    <strong>Assistant:</strong> {{ message.response }}
+                  {% endif %}
+                </p>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
-    {{ form.submit(class="btn btn-primary") }}
-  </form>
-  {% if response_text %}
-    <div class="mt-4">
-      <h2>Generated Text:</h2>
-      <p>{{ response_text }}</p>
+    <div class="row mt-3">
+      <div class="col-md-8">
+        <form id="openai-form" method="POST" action="">
+          {{ form.hidden_tag() }}
+          <div class="input-group">
+            {{ form.prompt(class="form-control") }}
+            <div class="input-group-append">
+              {{ form.submit(class="btn btn-primary") }}
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
-  {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+window.onload = function() {
+    console.log("JavaScript code is running"); // Debugging message
+
+    var form = document.getElementById("openai-form");
+    form.addEventListener("submit", function(event) {
+        event.preventDefault(); // prevent form from doing a full postback
+
+        $.ajax({
+            url: "{{ url_for('branchedchat') }}",
+            type: "post",
+            data: $("#openai-form").serialize(),
+            success: function(response){
+                // update your page with the response here
+                $("#conversation").append('<p><strong>User:</strong> ' + $("input[name='prompt']").val() + '</p>');
+                $("#conversation").append('<p><strong>Assistant:</strong> ' + response.response + '</p>');
+                $("input[name='prompt']").val("");
+                $("#conversation").scrollTop($("#conversation")[0].scrollHeight); // Scroll to the bottom of the conversation
+            }
+        });
+    });
+};
+</script>
 {% endblock %}
