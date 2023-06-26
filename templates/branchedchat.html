@@ -1,167 +1,112 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5">
-  <h1 style="color:black">Chat Bot</h1>
-  <button type="button" id="new-conversation-btn" class="btn btn-success mb-3">New Conversation</button>
-  <div id="conversations">
-    <!-- Conversation containers will be added here dynamically -->
-  </div>
+<div class="container-fluid chat-container">
+    <h1 class="text-center mb-4">Chatbot</h1>
+    <div id="chatbox" class="bg-light p-3 my-3 border">
+        <!-- Chat messages will appear here -->
+    </div>
+    <form id="chat-form" class="d-flex">
+        <input id="user-input" type="text" class="form-control" placeholder="Type your message...">
+        <button class="btn btn-primary ms-2" type="submit">Send</button>
+        <button id="new-conversation-btn" class="btn btn-success ms-2" type="button">New Conversation</button>
+        <button id="stop-btn" class="btn btn-danger ms-2" type="button">Stop</button>
+        <button id="regenerate-btn" class="btn btn-warning ms-2" type="button">Regenerate</button>
+        <button id="edit-btn" class="btn btn-secondary ms-2" type="button">Edit</button>
+    </form>
 </div>
-
-{% endblock %}
-
-{% block extra_css %}
-<style>
-  .conversation-container {
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    margin-bottom: 10px;
-  }
-
-  .chat-box {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-</style>
+<div class="typing-indicator">Chatbot is typing<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const conversationsDiv = document.querySelector("#conversations");
-  const newConversationBtn = document.querySelector("#new-conversation-btn");
-  let activeConversation;
-
-  function createConversation() {
-    const conversationContainer = document.createElement("div");
-    conversationContainer.classList.add("conversation-container");
-
-    const chatBox = document.createElement("div");
-    chatBox.classList.add("chat-box", "mt-3");
-    conversationContainer.appendChild(chatBox);
-
-    const formGroup = document.createElement("div");
-    formGroup.classList.add("form-group", "mt-3");
-    conversationContainer.appendChild(formGroup);
-
-    const form = document.createElement("form");
-    formGroup.appendChild(form);
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.name = "prompt";
-    input.classList.add("form-control");
-    input.placeholder = "Type your message here";
-    form.appendChild(input);
-
-    const sendBtn = document.createElement("button");
-    sendBtn.type = "submit";
-    sendBtn.classList.add("btn", "btn-primary", "mt-3");
-    sendBtn.textContent = "Send";
-    form.appendChild(sendBtn);
-
-    const stopBtn = document.createElement("button");
-    stopBtn.type = "button";
-    stopBtn.id = "stop-btn";
-    stopBtn.classList.add("btn", "btn-danger", "mt-3");
-    stopBtn.textContent = "Stop";
-    stopBtn.disabled = true;
-    form.appendChild(stopBtn);
-
-    const regenerateBtn = document.createElement("button");
-    regenerateBtn.type = "button";
-    regenerateBtn.id = "regenerate-btn";
-    regenerateBtn.classList.add("btn", "btn-warning", "mt-3");
-    regenerateBtn.textContent = "Regenerate";
-    regenerateBtn.disabled = true;
-    form.appendChild(regenerateBtn);
-
-    const editBtn = document.createElement("button");
-    editBtn.type = "button";
-    editBtn.id = "edit-btn";
-    editBtn.classList.add("btn", "btn-secondary", "mt-3");
-    editBtn.textContent = "Edit";
-    editBtn.disabled = true;
-    form.appendChild(editBtn);
-
-    conversationsDiv.appendChild(conversationContainer);
-    activeConversation = conversationContainer;
-
-    form.addEventListener("submit", sendMessage);
-
-    stopBtn.addEventListener("click", () => {
-      if (abortController) {
-        abortController.abort();
-        stopBtn.disabled = true;
-      }
-    });
-
-    regenerateBtn.addEventListener("click", () => {
-      if (lastUserMessage) {
-        generateResponse(lastUserMessage);
-      }
-    });
-
-    editBtn.addEventListener("click", () => {
-      if (lastUserMessage) {
-        messageInput.value = lastUserMessage;
-        messageInput.focus();
-      }
-    });
-  }
-
-  function addMessage(message, isUserMessage) {
-    const chatBox = activeConversation.querySelector(".chat-box");
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("mt-3", "p-3", "rounded");
-
-    if (isUserMessage) {
-      messageDiv.innerHTML = '<p><strong>User:</strong> ' + message + '</p>';
-    } else {
-      messageDiv.innerHTML = '<p><strong>Assistant:</strong> ' + message + '</p>';
+    function createTypingIndicator() {
+        let msg = $('<div>').addClass('message').addClass('bot').attr('id', 'typing-indicator');
+        let label = $('<div>').addClass('label').addClass('bot-label').text('Chatbot');
+        let content = $('<div>').text('Chatbot is typing').append($('<span class="dot">.</span>')).append($('<span class="dot">.</span>')).append($('<span class="dot">.</span>'));
+        msg.append(label).append(content);
+        return msg;
     }
+
+    function appendMessage(who, text) {
+        console.log("Appending message:", who, text);
+        const chatBox = document.getElementById('chatbox');
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("mt-3", "p-3", "rounded");
+
+        if (who === 'user') {
+          messageDiv.innerHTML = '<p><strong>User:</strong> ' + text + '</p>';
+        } else {
+          messageDiv.innerHTML = '<p><strong>Assistant:</strong> ' + text + '</p>';
+      }
 
     chatBox.appendChild(messageDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-async function sendMessage(event) {
-  event.preventDefault();
-  const messageInput = activeConversation.querySelector("input[name='prompt']");
-  const message = messageInput.value.trim();
-
-  if (message !== "") {
-    addMessage(message, true);
-
-    // Fetch and display the response from your API
-    try {
-      const response = await fetch("{{ url_for('api_chat') }}", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ message: message })
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        console.error(data.error);
-      } else {
-        messageInput.value = "";
-        addMessage(data.response, false);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  }
 }
 
-  newConversationBtn.addEventListener("click", createConversation);
+    function showTypingIndicator() {
+        let typingIndicator = createTypingIndicator();
+        $('#chatbox').append(typingIndicator);
+        $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
+    }
 
-  document.addEventListener("DOMContentLoaded", function() {
-    createConversation();
-  });
-</script>
+    function hideTypingIndicator() {
+        $('#typing-indicator').remove();
+    }
+
+    $('#chat-form').on('submit', function(event) { event.preventDefault();
+    let userInput = $('#user-input').val(); 
+    appendMessage('user', userInput); 
+    $('#user-input').val('');
+    showTypingIndicator();
+
+    $.ajax({
+    type: 'POST',
+    url: '/api_chat',
+    contentType: 'application/json;charset=UTF-8',
+    data: JSON.stringify({message: userInput}),
+    success: function(data) {
+        hideTypingIndicator();
+        appendMessage('bot', data.response);
+    },
+    error: function() {
+        hideTypingIndicator();
+        alert("An error occurred while processing the request.");
+    }
+    });
+
+setInterval(function() {
+    let visibleDots = 0;
+    $('#typing-indicator .dot').each(function() {
+        let dot = $(this);
+        setTimeout(function() {
+            dot.css('opacity', visibleDots < 3 ? '1' : '0');
+        }, visibleDots * 500);
+        visibleDots = (visibleDots + 1) % 4;
+    });
+}, 1500);
+
+// Add event listeners for the buttons
+    $('#new-conversation-btn').on('click', function() {
+        startNewConversation();
+        $('#chatbox').html('');
+    });
+
+    $('#stop-btn').on('click', function() {
+        $('#chatbox').html('');
+    });
+
+    $('#regenerate-btn').on('click', function() {
+        if ($('#user-input').val()) {
+            $('#chat-form').submit();
+        }
+    });
+
+    $('#edit-btn').on('click', function() {
+        if ($('#user-input').val()) {
+            $('#user-input').val($('#user-input').val());
+        }
+    });
+    startNewConversation();
+</script> 
 {% endblock %}
