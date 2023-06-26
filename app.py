@@ -11,8 +11,6 @@ from forms import OpenAIForm
 from forms import RegistrationForm, LoginForm, SystemPromptForm
 from models import User, Conversation, SystemPrompt
 
-
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
@@ -20,6 +18,8 @@ db.init_app(app)
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+conversation_history = []
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -75,50 +75,39 @@ def manage_api_keys():
 def get_openai_response(prompt, api_key):
     import openai
 
-    # Fetch the system prompt from the database
-    system_prompt = SystemPrompt.query.first()
-
     openai.api_key = api_key
+    conversation_history.append({
+        "role": "user",
+        "content": prompt
+    })
     response = openai.ChatCompletion.create(
         model="gpt-4",
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt.prompt if system_prompt else "You are a helpful assistant."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
+        messages=conversation_history
     )
+    conversation_history.append({
+        "role": "assistant",
+        "content": response.choices[0].message['content'].strip()
+    })
+    # Ensure the conversation history doesn't exceed 8000 characters
+    while sum(len(m["content"]) for m in conversation_history) > 8000:
+        conversation_history.pop(0)
     return response.choices[0].message['content'].strip()
 
-def save_conversation(user_id, prompt, response_text):
-    # Save the user's message
-    user_message = Conversation(user_id=user_id, prompt=prompt, response=None)
-    db.session.add(user_message)
-
-    # Save the assistant's response
-    assistant_message = Conversation(user_id=user_id, prompt=None, response=response_text)
-    db.session.add(assistant_message)
-
-    db.session.commit()
-
-@app.route("/branchedchat", methods=['GET', 'POST'])
+@app.route("/branchedchat", methods=['GET'])
 @login_required
 def branchedchat():
     form = OpenAIForm()
-    response_text = None
-
-    if form.validate_on_submit():
-        prompt = form.prompt.data
-        response_text = get_openai_response(prompt, current_user.api_key)
-        save_conversation(current_user.id, prompt, response_text)
-        return jsonify(response=response_text)
-
     return render_template('branchedchat.html', title='OpenAI', form=form)
 
+@app.route("/api_chat", methods=['POST'])
+@login_required
+def api_chat():
+    print("API Chat route called")  # Add this line
+    data = request.get_json()
+    prompt = data.get('message')
+    response_text = get_openai_response(prompt, current_user.api_key)
+    print(f"Returning response: {response_text}")
+    return jsonify(response=response_text)
 
 
 

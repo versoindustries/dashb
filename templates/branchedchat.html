@@ -1,67 +1,167 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1>AssistantChat</h1>
-  <div class="container">
-    <div class="row">
-      <div class="col-md-8">
-        <div class="card">
-          <div class="card-body" id="conversation" style="height: 400px; overflow-y: scroll;">
-            <h2>Conversation:</h2>
-            {% if conversation %}
-              {% for message in conversation %}
-                <p>
-                  {% if message.prompt %}
-                    <strong>User:</strong> {{ message.prompt }}
-                  {% else %}
-                    <strong>Assistant:</strong> {{ message.response }}
-                  {% endif %}
-                </p>
-              {% endfor %}
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-md-8">
-        <form id="openai-form" method="POST" action="">
-          {{ form.hidden_tag() }}
-          <div class="input-group">
-            {{ form.prompt(class="form-control") }}
-            <div class="input-group-append">
-              {{ form.submit(class="btn btn-primary") }}
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+<div class="container mt-5">
+  <h1 style="color:black">Chat Bot</h1>
+  <button type="button" id="new-conversation-btn" class="btn btn-success mb-3">New Conversation</button>
+  <div id="conversations">
+    <!-- Conversation containers will be added here dynamically -->
   </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .conversation-container {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .chat-box {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+</style>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
-window.onload = function() {
-    console.log("JavaScript code is running"); // Debugging message
+  const conversationsDiv = document.querySelector("#conversations");
+  const newConversationBtn = document.querySelector("#new-conversation-btn");
+  let activeConversation;
 
-    var form = document.getElementById("openai-form");
-    form.addEventListener("submit", function(event) {
-        event.preventDefault(); // prevent form from doing a full postback
+  function createConversation() {
+    const conversationContainer = document.createElement("div");
+    conversationContainer.classList.add("conversation-container");
 
-        $.ajax({
-            url: "{{ url_for('branchedchat') }}",
-            type: "post",
-            data: $("#openai-form").serialize(),
-            success: function(response){
-                // update your page with the response here
-                $("#conversation").append('<p><strong>User:</strong> ' + $("input[name='prompt']").val() + '</p>');
-                $("#conversation").append('<p><strong>Assistant:</strong> ' + response.response + '</p>');
-                $("input[name='prompt']").val("");
-                $("#conversation").scrollTop($("#conversation")[0].scrollHeight); // Scroll to the bottom of the conversation
-            }
-        });
+    const chatBox = document.createElement("div");
+    chatBox.classList.add("chat-box", "mt-3");
+    conversationContainer.appendChild(chatBox);
+
+    const formGroup = document.createElement("div");
+    formGroup.classList.add("form-group", "mt-3");
+    conversationContainer.appendChild(formGroup);
+
+    const form = document.createElement("form");
+    formGroup.appendChild(form);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = "prompt";
+    input.classList.add("form-control");
+    input.placeholder = "Type your message here";
+    form.appendChild(input);
+
+    const sendBtn = document.createElement("button");
+    sendBtn.type = "submit";
+    sendBtn.classList.add("btn", "btn-primary", "mt-3");
+    sendBtn.textContent = "Send";
+    form.appendChild(sendBtn);
+
+    const stopBtn = document.createElement("button");
+    stopBtn.type = "button";
+    stopBtn.id = "stop-btn";
+    stopBtn.classList.add("btn", "btn-danger", "mt-3");
+    stopBtn.textContent = "Stop";
+    stopBtn.disabled = true;
+    form.appendChild(stopBtn);
+
+    const regenerateBtn = document.createElement("button");
+    regenerateBtn.type = "button";
+    regenerateBtn.id = "regenerate-btn";
+    regenerateBtn.classList.add("btn", "btn-warning", "mt-3");
+    regenerateBtn.textContent = "Regenerate";
+    regenerateBtn.disabled = true;
+    form.appendChild(regenerateBtn);
+
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.id = "edit-btn";
+    editBtn.classList.add("btn", "btn-secondary", "mt-3");
+    editBtn.textContent = "Edit";
+    editBtn.disabled = true;
+    form.appendChild(editBtn);
+
+    conversationsDiv.appendChild(conversationContainer);
+    activeConversation = conversationContainer;
+
+    form.addEventListener("submit", sendMessage);
+
+    stopBtn.addEventListener("click", () => {
+      if (abortController) {
+        abortController.abort();
+        stopBtn.disabled = true;
+      }
     });
-};
+
+    regenerateBtn.addEventListener("click", () => {
+      if (lastUserMessage) {
+        generateResponse(lastUserMessage);
+      }
+    });
+
+    editBtn.addEventListener("click", () => {
+      if (lastUserMessage) {
+        messageInput.value = lastUserMessage;
+        messageInput.focus();
+      }
+    });
+  }
+
+  function addMessage(message, isUserMessage) {
+    const chatBox = activeConversation.querySelector(".chat-box");
+    const messageDiv = document.createElement("div");
+    messageDiv.classList.add("mt-3", "p-3", "rounded");
+
+    if (isUserMessage) {
+      messageDiv.innerHTML = '<p><strong>User:</strong> ' + message + '</p>';
+    } else {
+      messageDiv.innerHTML = '<p><strong>Assistant:</strong> ' + message + '</p>';
+    }
+
+    chatBox.appendChild(messageDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+async function sendMessage(event) {
+  event.preventDefault();
+  const messageInput = activeConversation.querySelector("input[name='prompt']");
+  const message = messageInput.value.trim();
+
+  if (message !== "") {
+    addMessage(message, true);
+
+    // Fetch and display the response from your API
+    try {
+      const response = await fetch("{{ url_for('api_chat') }}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: message })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        console.error(data.error);
+      } else {
+        messageInput.value = "";
+        addMessage(data.response, false);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+}
+
+  newConversationBtn.addEventListener("click", createConversation);
+
+  document.addEventListener("DOMContentLoaded", function() {
+    createConversation();
+  });
 </script>
 {% endblock %}
