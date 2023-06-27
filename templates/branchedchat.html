@@ -86,27 +86,35 @@ setInterval(function() {
     });
 }, 1500);
 
-// Add event listeners for the buttons
-    $('#new-conversation-btn').on('click', function() {
-        startNewConversation();
-        $('#chatbox').html('');
-    });
+function startNewConversation() {
+    $('#chatbox').html('');  // Clear the chat box
+    // Add any additional logic for starting a new conversation here
+}
 
-    $('#stop-btn').on('click', function() {
-        $('#chatbox').html('');
-    });
+$('#new-conversation-btn').on('click', startNewConversation);
 
-    $('#regenerate-btn').on('click', function() {
-        if ($('#user-input').val()) {
-            $('#chat-form').submit();
-        }
-    });
+$('#stop-btn').on('click', function() {
+    // Add any additional logic for stopping the current conversation here
+    $('#chatbox').html('');
+});
 
-    $('#edit-btn').on('click', function() {
-        if ($('#user-input').val()) {
-            $('#user-input').val($('#user-input').val());
-        }
-    });
-    startNewConversation();
+$('#regenerate-btn').on('click', function() {
+    if ($('#user-input').val()) {
+        $('#chat-form').submit();
+    } else {
+        // Handle the case where the user input is empty
+        alert("Please enter a message to regenerate.");
+    }
+});
+
+$('#edit-btn').on('click', function() {
+    if ($('#user-input').val()) {
+        $('#user-input').val($('#user-input').val());
+    } else {
+        // Handle the case where the user input is empty
+        alert("Please enter a message to edit.");
+    }
+});
+startNewConversation();
 </script> 
 {% endblock %}
